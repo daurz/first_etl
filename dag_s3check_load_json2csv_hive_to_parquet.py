@@ -30,10 +30,10 @@ def S3Json2CSV():
     def getRows(data, columns):
         output = []
         output.append(columns)
-    for i, line in enumerate(data):
-        row = json.loads(line.decode('utf-8'))
-        output.append([row[key] if key in row.keys() else '' for key in columns])
-    return output
+        for i, line in enumerate(data):
+            row = json.loads(line.decode('utf-8'))
+            output.append([row[key] if key in row.keys() else '' for key in columns])
+        return output
 
     key = ElementTree.fromstring(r.get("https://storage.yandexcloud.net/misis-zo-bigdata?list-type=2&encoding-type=url").text)[6][0].text
 
