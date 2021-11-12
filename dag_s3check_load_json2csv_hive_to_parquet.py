@@ -77,16 +77,36 @@ with DAG('dauren_dag', schedule_interval='*/30 * * * *', default_args=default_ar
         bash_command='hdfs dfs -put -f /tmp/new_data_dauren.csv /user/dauren_naipov/staging/new_data.csv'
     )
 
-    hql = """LOAD DATA INPATH '/user/dauren_naipov/staging/new_data.csv' 
-        OVERWRITE INTO TABLE data_tmp;"""
-    hql1 = """INSERT INTO TABLE all_raitings  
-        SELECT * FROM data_tmp;"""
-    hql2 = """INSERT INTO TABLE user_scores 
-        SELECT reviewerID, asin, overall, reviewtime FROM all_raitings;"""
-    hql3 = """INSERT INTO TABLE reviews 
-        SELECT reviewerID, reviewText, overall, reviewtime FROM all_raitings;"""
-    hql4 = """INSERT INTO TABLE product_scores 
-        SELECT asin, overall, reviewtime FROM all_raitings;"""
+    hql = """DROP TABLE IF EXISTS data_tmp;
+            CREATE EXTERNAL TABLE data_tmp (
+	                            overall numeric(2,1),
+	                            verified boolean,
+	                            reviewtime string,
+                              reviewerid string,
+                              asin string,
+                              reviewername string,
+                              reviewtext string,
+                              summary string,
+                              unixreviewtime int)
+            ROW FORMAT delimited fields terminated by ','
+            STORED AS TEXTFILE
+            LOCATION '/user/dauren_naipov/staging/';"""
+
+    hql1 = """INSERT INTO TABLE all_raitings
+            SELECT overall, verified, from_unixtime(unix_timestamp(reviewtime,'MM dd, yyyy'),'yyyy-MM-dd') as reviewtime,
+            reviewerid, asin, reviewername, reviewtext, summary, unixreviewtime,
+            from_unixtime(unix_timestamp(reviewtime,'MM dd, yyyy'),'yyyy') as part_year FROM data_tmp;"""
+
+
+    hql2 = """INSERT INTO TABLE user_scores SELECT reviewerid, asin, overall, reviewtime,
+            from_unixtime(unix_timestamp(reviewtime,'MM dd, yyyy'),'yyyy') as part_year FROM data_tmp;"""
+
+    hql3 = """INSERT INTO TABLE reviews SELECT reviewerid, reviewtext, overall, reviewtime,
+            from_unixtime(unix_timestamp(reviewtime,'MM dd, yyyy'),'yyyy') as part_year FROM data_tmp;"""
+
+    hql4 = """INSERT INTO TABLE product_scores SELECT asin, overall, reviewtime,
+            from_unixtime(unix_timestamp(reviewtime,'MM dd, yyyy'),'yyyy') as part_year FROM data_tmp;"""
+   
 
     hive_load = HiveOperator(
         hql=hql,
